@@ -1,0 +1,7 @@
+libRedRT.dll
+libRedRT-defs.r
+libRedRT-include.red
+*.swp
+*.swo
+*.exe
+config.red 
