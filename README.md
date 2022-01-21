@@ -19,6 +19,7 @@ red.exe -r -t Windows n2n_remote.red
 ## 配置
 
 文件名: config.red
+
 和`n2n.exe`放到同一个目录
 
 ```red
