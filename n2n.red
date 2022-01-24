@@ -27,6 +27,8 @@ case [
         servers_index_community: 3
         servers_index_encrypt_key: 4
 
+        ping_ip: "192.168.254.1"
+
     ]
 ]
 
@@ -69,6 +71,12 @@ tap_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/tap-windows-9.21.
 down_binary: func [file url] [
     if not exists? file [
         write/binary file (decompress read/binary url)
+    ]
+]
+
+copy_binary: func [to_file from_file] [
+    if not exists? to_file [
+        write/binary to_file (read/binary from_file)
     ]
 ]
 
@@ -142,17 +150,32 @@ view [
         call "start tap-windows-9.21.2.exe"
         alert "下载完成，准备安装Tap-Windows！！！"
     ]
-    button font-size 14 bold "2. 启动N2N" button_size [
+    button font-size 14 bold "2. 启动/重启N2N" button_size [
         case [
             select_id = 0 [alert "没有选择"]
             true [
-                call rejoin [
-                    "start /min cmd /K edge_" edge_version ".exe -a " f_ip/text
-                    " -c " f_community/text 
-                    " -k " f_encrypt_key/text
-                    " -l " f_supernode/text
-                    " -b"
+                ;; 复制binary文件
+                to_edge_binary: rejoin ["edge_" edge_version "_" f_ip/text ".exe" ]
+                from_edge_binary: rejoin ["edge_" edge_version ".exe"]
+                copy_binary (to-file to_edge_binary) (to-file from_edge_binary)
+
+                ;; 生成启动脚本
+                to_edge_bat: rejoin ["edge_" edge_version "_" f_ip/text ".bat"]
+                write (to-file to_edge_bat) rejoin [
+                    "@echo off" newline
+                    "taskkill /F /IM " to_edge_binary newline
+                    to_edge_binary " -a " f_ip/text 
+                    " -c " f_community/text
+                    " -k " f_encrypt_key/text 
+                    " -l " f_supernode/text 
+                    " -b" newline
                 ]
+
+                ;; 启动
+                call rejoin [
+                    "cmd /C " to_edge_bat
+                ]
+                alert "启动完成，测试PING"
             ]
 
         ] 
@@ -161,7 +184,8 @@ view [
         case [
             select_id = 0 [alert "没有选择"] 
             true [
-                call rejoin ["start ping 192.168.254.1"]
+                ; print rejoin ["start ping " ping_ip]
+                call rejoin ["start ping " ping_ip]
             ]
         ] 
     ]
