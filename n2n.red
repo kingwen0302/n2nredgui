@@ -118,6 +118,17 @@ view [
     ] 
     return
 
+    h5 font-color Blue "是否DEBUG:" label_size
+    is_debug: check font-size 13 "否"
+    on-change [
+        either is_debug/data 
+            [is_debug/text: "是"]
+            [is_debug/text: "否"]
+        
+        print is_debug/data
+    ]
+    return
+
     separator
     return
 
@@ -171,11 +182,19 @@ view [
                     " -b" newline
                 ]
 
-                ;; 启动
-                call rejoin [
-                    "cmd /C " to_edge_bat
+                ; print is_debug/data
+                either is_debug/data 
+                [
+                    ;; debug 启动
+                    call rejoin ["start /min cmd /C " to_edge_bat ]
                 ]
-                alert "启动完成，测试PING"
+                [
+                    ;; release 启动
+                    call rejoin [
+                        "cmd /C " to_edge_bat
+                    ]
+                    alert "启动完成，测试PING"
+                ]
             ]
 
         ] 
@@ -185,6 +204,7 @@ view [
             select_id = 0 [alert "没有选择"] 
             true [
                 ; print rejoin ["start ping " ping_ip]
+                print is_debug/data
                 call rejoin ["start ping " ping_ip]
             ]
         ] 
