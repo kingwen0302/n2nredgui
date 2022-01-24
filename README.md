@@ -44,4 +44,6 @@ servers_index_name: 1
 servers_index_supernode: 2
 servers_index_community: 3
 servers_index_encrypt_key: 4
+
+ping_ip: "192.168.254.1"
 ```
