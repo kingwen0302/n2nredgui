@@ -67,6 +67,7 @@ edge_v2_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v2.exe.g
 edge_v2s_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v2s.exe.gz
 edge_v3_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v3.exe.gz
 tap_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/tap-windows-9.21.2.exe.gz
+nssm_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/nssm.exe.gz
 
 down_binary: func [file url] [
     if not exists? file [
@@ -157,8 +158,10 @@ view [
         down_binary %edge_v2s.exe edge_v2s_url
         down_binary %edge_v3.exe edge_v3_url
         down_binary %tap-windows-9.21.2.exe tap_url
+        down_binary %nssm.exe nssm_url
 
         call "start tap-windows-9.21.2.exe"
+        call "start nssm.exe"
         alert "下载完成，准备安装Tap-Windows！！！"
     ]
     button font-size 14 bold "2. 启动/重启N2N" button_size [
@@ -199,15 +202,91 @@ view [
 
         ] 
     ]
-    button font-size 14 bold "3. 测试(PING)" button_size [
+
+    button font-size 14 bold "3. 停止N2N" button_size [
         case [
-            select_id = 0 [alert "没有选择"] 
+            select_id = 0 [alert "没有选择"]
             true [
-                ; print rejoin ["start ping " ping_ip]
-                print is_debug/data
-                call rejoin ["start ping " ping_ip]
+                ;; 复制binary文件
+                to_edge_binary: rejoin ["edge_" edge_version "_" f_ip/text ".exe" ]
+
+                ;; 生成启动脚本
+                to_edge_bat: rejoin ["edge_" edge_version "_" f_ip/text ".bat"]
+                write (to-file to_edge_bat) rejoin [
+                    "@echo off" newline
+                    "taskkill /F /IM " to_edge_binary newline
+                ]
+
+                ; print is_debug/data
+                either is_debug/data 
+                [
+                    ;; debug 启动
+                    call rejoin ["start /min cmd /C " to_edge_bat ]
+                ]
+                [
+                    ;; release 启动
+                    call rejoin [
+                        "cmd /C " to_edge_bat
+                    ]
+                    alert "停止完成"
+                ]
             ]
         ] 
+    ]
+    return
+
+    button font-size 14 bold "4. 注册为服务" button_size [
+        case [
+            select_id = 0 [alert "没有选择"]
+            true [
+                ;; 复制binary文件
+                to_edge_binary: rejoin ["edge_" edge_version "_" f_ip/text ".exe" ]
+                srv_name: rejoin ["edge_" edge_version "_" f_ip/text ]
+                from_edge_binary: rejoin ["edge_" edge_version ".exe"]
+                copy_binary (to-file to_edge_binary) (to-file from_edge_binary)
+
+                ;; 生成启动脚本
+                to_edge_bat: rejoin ["edge_" edge_version "_" f_ip/text "_srv.bat"]
+                write (to-file to_edge_bat) rejoin [
+                    "@echo off" newline
+                    "set DIR=%~dp0" newline
+                    "nssm install " srv_name " "
+                    "%DIR%" to_edge_binary " -a " f_ip/text 
+                    " -c " f_community/text
+                    " -k " f_encrypt_key/text 
+                    " -l " f_supernode/text 
+                    " -b" newline
+                    "sc start " srv_name " " newline
+                ]
+
+                ; print is_debug/data
+                either is_debug/data 
+                [
+                    ;; debug 启动
+                    call rejoin ["start /min cmd /C " to_edge_bat ]
+                ]
+                [
+                    ;; release 启动
+                    call rejoin [
+                        "cmd /C " to_edge_bat
+                    ]
+                    alert "注册完成"
+                ]
+            ]
+
+        ] 
+    ]
+
+    button font-size 14 bold "5. 测试(PING)" button_size [
+        call "start ^"PING^" cmd"
+        ; case [
+        ;     select_id = 0 [alert "没有选择"] 
+        ;     true [
+        ;         ; print rejoin ["start ping " ping_ip]
+        ;         print is_debug/data
+        ;         call rejoin ["start ping " ping_ip]
+        ;     ]
+        ; ] 
     ]
     return
 
