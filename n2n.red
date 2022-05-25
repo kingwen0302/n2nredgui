@@ -2,6 +2,27 @@ Red [
     Needs: 'view
 ]
 
+;; 各个版本的edge、tap、nssm下载地址
+edge_v1_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v1.exe.gz
+edge_v2_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v2.exe.gz
+edge_v2s_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v2s.exe.gz
+edge_v3_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v3.exe.gz
+tap_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/tap-windows-9.21.2.exe.gz
+nssm_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/nssm.exe.gz
+gsudo_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/gsudo.exe.gz
+
+down_binary: func [file url] [
+    if not exists? file [
+        write/binary file (decompress read/binary url)
+    ]
+]
+
+copy_binary: func [to_file from_file] [
+    if not exists? to_file [
+        write/binary to_file (read/binary from_file)
+    ]
+]
+
 ;; 如果有配置文件的话, 从配置文件中加载, 否则默认数据
 case [
     exists? %config.red [
@@ -28,7 +49,6 @@ case [
         servers_index_encrypt_key: 4
 
         ping_ip: "192.168.254.1"
-
     ]
 ]
 
@@ -54,7 +74,7 @@ while [ i <= (length? servers) ] [
 
 select_id: 0
 
-label_size: 100
+label_size: 140
 field_size: 200
 button_size: 150
 
@@ -62,34 +82,14 @@ edge_ver_name_list: ["v1 - 1.3.2" "v2 - 2.8" "v2s - 2.1" "v3 - 3.x"]
 edge_ver_name_map: make map! [1 "v1" 2 "v2" 3 "v2s" 4 "v3"]
 edge_version: ""
 
-edge_v1_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v1.exe.gz
-edge_v2_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v2.exe.gz
-edge_v2s_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v2s.exe.gz
-edge_v3_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/edge_v3.exe.gz
-tap_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/tap-windows-9.21.2.exe.gz
-nssm_url: https://cdn.jsdelivr.net/gh/kingwen0302/n2nredgui/bin/nssm.exe.gz
-
-down_binary: func [file url] [
-    if not exists? file [
-        write/binary file (decompress read/binary url)
-    ]
-]
-
-copy_binary: func [to_file from_file] [
-    if not exists? to_file [
-        write/binary to_file (read/binary from_file)
-    ]
-]
+;; 创建数据目录
+data_dir: %data/
+create-dir data_dir
 
 view [
-    title "N2N启动程序"
+    title "N2N GUI"
     
-    h5 font-color Red "！！！NOTE: 请以管理员身份运行！！！"
-    return
-
-    style separator: h5 ">>>>>>>>>>>>>>>>>>>" 
-    separator
-    return
+    style separator: text "" 
 
     h5 font-color Blue "edge版本:" label_size
     drop-down "" data edge_ver_name_list field_size
@@ -97,7 +97,6 @@ view [
         select_id: face/selected
         edge_version: edge_ver_name_map/(select_id)
     ]
-    h5 font-color Red "要与supernode版本一致"
     return
 
     h5 font-color Blue "预置server: " label_size
@@ -133,15 +132,15 @@ view [
     separator
     return
 
-    h5 "community:" label_size
+    h5 "community(-c):" label_size
     f_community: field "" field_size
     return
 
-    h5 "encrypt_key:" label_size
+    h5 "encrypt_key(-k):" label_size
     f_encrypt_key: field "" field_size
     return
 
-    h5 "supernode:" label_size
+    h5 "supernode(-l):" label_size
     f_supernode: field "" field_size
     return
 
@@ -153,15 +152,15 @@ view [
     return
 
     button font-size 14 bold font-color Red "1. 下载/安装" button_size [
-        down_binary %edge_v1.exe edge_v1_url
-        down_binary %edge_v2.exe edge_v2_url
-        down_binary %edge_v2s.exe edge_v2s_url
-        down_binary %edge_v3.exe edge_v3_url
-        down_binary %tap-windows-9.21.2.exe tap_url
-        down_binary %nssm.exe nssm_url
+        down_binary rejoin [data_dir "edge_v1.exe"]     edge_v1_url
+        down_binary rejoin [data_dir "edge_v2.exe"]     edge_v2_url
+        down_binary rejoin [data_dir "edge_v2s.exe"]    edge_v2s_url
+        down_binary rejoin [data_dir "edge_v3.exe"]     edge_v3_url
+        down_binary rejoin [data_dir "tap-windows-9.21.2.exe"] tap_url
+        down_binary rejoin [data_dir "nssm.exe"]        nssm_url
+        down_binary rejoin [data_dir "gsudo.exe"]       gsudo_url
 
-        call "start tap-windows-9.21.2.exe"
-        call "start nssm.exe"
+        call rejoin ["start " data_dir "/tap-windows-9.21.2.exe"]
         alert "下载完成，准备安装Tap-Windows！！！"
     ]
     button font-size 14 bold "2. 启动/重启N2N" button_size [
@@ -170,15 +169,18 @@ view [
             true [
                 ;; 复制binary文件
                 to_edge_binary: rejoin ["edge_" edge_version "_" f_ip/text ".exe" ]
-                from_edge_binary: rejoin ["edge_" edge_version ".exe"]
-                copy_binary (to-file to_edge_binary) (to-file from_edge_binary)
+                to_edge_binary1: rejoin [ data_dir to_edge_binary ]
+
+                from_edge_binary: rejoin [data_dir "edge_" edge_version ".exe"]
+                copy_binary (to-file to_edge_binary1) (to-file from_edge_binary)
 
                 ;; 生成启动脚本
-                to_edge_bat: rejoin ["edge_" edge_version "_" f_ip/text ".bat"]
+                to_edge_bat: rejoin [data_dir "edge_" edge_version "_" f_ip/text "_start.bat"]
                 write (to-file to_edge_bat) rejoin [
                     "@echo off" newline
-                    "taskkill /F /IM " to_edge_binary newline
-                    to_edge_binary " -a " f_ip/text 
+                    "set DIR=%~dp0" newline
+                    "%DIR%gsudo.exe taskkill /F /IM " to_edge_binary newline
+                    "%DIR%gsudo.exe %DIR%" to_edge_binary " -p 61234 -a " f_ip/text 
                     " -c " f_community/text
                     " -k " f_encrypt_key/text 
                     " -l " f_supernode/text 
@@ -186,15 +188,17 @@ view [
                 ]
 
                 ; print is_debug/data
-                either is_debug/data 
-                [
+                either is_debug/data [
                     ;; debug 启动
-                    call rejoin ["start /min cmd /C " to_edge_bat ]
-                ]
-                [
+                    call rejoin [
+                        "start /min cmd /C " 
+                        replace to_edge_bat "/" "\"
+                    ]
+                ] [
                     ;; release 启动
                     call rejoin [
-                        "cmd /C " to_edge_bat
+                        "cmd /C " 
+                        replace to_edge_bat "/" "\"
                     ]
                     alert "启动完成，测试PING"
                 ]
@@ -211,22 +215,27 @@ view [
                 to_edge_binary: rejoin ["edge_" edge_version "_" f_ip/text ".exe" ]
 
                 ;; 生成启动脚本
-                to_edge_bat: rejoin ["edge_" edge_version "_" f_ip/text ".bat"]
+                to_edge_bat: rejoin [data_dir "edge_" edge_version "_" f_ip/text "_stop.bat"]
                 write (to-file to_edge_bat) rejoin [
                     "@echo off" newline
-                    "taskkill /F /IM " to_edge_binary newline
+                    "set DIR=%~dp0" newline
+                    "%DIR%gsudo.exe taskkill /F /IM " to_edge_binary newline
                 ]
 
                 ; print is_debug/data
                 either is_debug/data 
                 [
                     ;; debug 启动
-                    call rejoin ["start /min cmd /C " to_edge_bat ]
+                    call rejoin [
+                        "start /min cmd /C " 
+                        replace to_edge_bat "/" "\"
+                    ]
                 ]
                 [
                     ;; release 启动
                     call rejoin [
-                        "cmd /C " to_edge_bat
+                        "cmd /C " 
+                        replace to_edge_bat "/" "\"
                     ]
                     alert "停止完成"
                 ]
@@ -241,34 +250,46 @@ view [
             true [
                 ;; 复制binary文件
                 to_edge_binary: rejoin ["edge_" edge_version "_" f_ip/text ".exe" ]
+                to_edge_binary1: rejoin [data_dir to_edge_binary]
                 srv_name: rejoin ["edge_" edge_version "_" f_ip/text ]
-                from_edge_binary: rejoin ["edge_" edge_version ".exe"]
-                copy_binary (to-file to_edge_binary) (to-file from_edge_binary)
+                from_edge_binary: rejoin [data_dir "edge_" edge_version ".exe"]
+                copy_binary (to-file to_edge_binary1) (to-file from_edge_binary)
 
                 ;; 生成启动脚本
-                to_edge_bat: rejoin ["edge_" edge_version "_" f_ip/text "_srv.bat"]
+                to_edge_bat: rejoin [data_dir "edge_" edge_version "_" f_ip/text "_srv.bat"]
                 write (to-file to_edge_bat) rejoin [
                     "@echo off" newline
                     "set DIR=%~dp0" newline
-                    "nssm install " srv_name " "
-                    "%DIR%" to_edge_binary " -a " f_ip/text 
+                    "%DIR%gsudo.exe sc stop " srv_name " " newline
+                    "sleep 1" newline
+                    "%DIR%gsudo.exe taskkill /F /IM " to_edge_binary newline
+                    "sleep 1" newline
+                    "%DIR%gsudo.exe sc delete " srv_name " " newline
+                    "sleep 1" newline
+                    "%DIR%gsudo.exe %DIR%nssm.exe install " srv_name " "
+                    "%DIR%" to_edge_binary " -p 61234 -a " f_ip/text 
                     " -c " f_community/text
                     " -k " f_encrypt_key/text 
                     " -l " f_supernode/text 
                     " -b" newline
-                    "sc start " srv_name " " newline
+                    "sleep 1" newline
+                    "%DIR%gsudo.exe sc start " srv_name " " newline
                 ]
 
                 ; print is_debug/data
                 either is_debug/data 
                 [
                     ;; debug 启动
-                    call rejoin ["start /min cmd /C " to_edge_bat ]
+                    call rejoin [
+                        "start /min cmd /C " 
+                        replace to_edge_bat "/" "\"
+                    ]
                 ]
                 [
                     ;; release 启动
                     call rejoin [
-                        "cmd /C " to_edge_bat
+                        "cmd /C " 
+                        replace to_edge_bat "/" "\"
                     ]
                     alert "注册完成"
                 ]
@@ -279,25 +300,18 @@ view [
 
     button font-size 14 bold "5. 测试(PING)" button_size [
         call "start ^"PING^" cmd"
-        ; case [
-        ;     select_id = 0 [alert "没有选择"] 
-        ;     true [
-        ;         ; print rejoin ["start ping " ping_ip]
-        ;         print is_debug/data
-        ;         call rejoin ["start ping " ping_ip]
-        ;     ]
-        ; ] 
     ]
-    return
 
-    separator
-    return
-
-    h5 font-color Red "1. 请用管理员身份运行；"
-    return
-    h5 font-color Red "2. 先下载，安装Tap-Windows，已安装的忽略；"
-    return
-    h5 font-color Red "3. 请不要关闭命令行，若连接不上，请关闭命令行窗口重试；"
-    return
-    h5 font-color Red "4. edge版本要和supernode版本一致。"
+    button font-size 14 bold "6. 帮助/注意" button_size [
+        View [
+            title "N2N-帮助/注意"
+            h5 font-color Red "1. 请用管理员身份运行；"
+            return
+            h5 font-color Red "2. 先下载，安装Tap-Windows，已安装的忽略；"
+            return
+            h5 font-color Red "3. 请不要关闭命令行，若连接不上，请关闭命令行窗口重试；"
+            return
+            h5 font-color Red "4. edge版本要和supernode版本一致。"
+        ]
+    ]
 ]
